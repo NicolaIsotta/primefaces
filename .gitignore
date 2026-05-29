@@ -67,3 +67,6 @@ node_modules/
 /primefaces-theme/target/
 /primefaces-coverage/target/
 /primefaces/src/main/frontend/
+/primefaces-playwright/primefaces-playwright-core/target-ide/
+/primefaces-playwright/target/
+/primefaces-playwright/primefaces-playwright-components/target-ide/

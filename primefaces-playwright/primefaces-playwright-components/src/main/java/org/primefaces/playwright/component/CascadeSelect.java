@@ -1,0 +1,167 @@
+/*
+ * The MIT License
+ *
+ * Copyright (c) 2009-2025 PrimeTek Informatics
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+package org.primefaces.playwright.component;
+
+import org.primefaces.playwright.By;
+import org.primefaces.playwright.PrimeExpectedConditions;
+import org.primefaces.playwright.PrimePlaywright;
+import org.primefaces.playwright.component.base.AbstractInputComponent;
+import org.primefaces.playwright.component.base.ComponentUtils;
+import org.primefaces.playwright.findby.FindByParentPartialId;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.microsoft.playwright.Locator;
+/**
+ * Component wrapper for the PrimeFaces {@code p:cascadeSelect}.
+ */
+public abstract class CascadeSelect extends AbstractInputComponent {
+
+    @FindByParentPartialId("_input")
+    private Locator input;
+
+    @FindByParentPartialId(value = "_panel", searchFromRoot = true)
+    private Locator panel;
+
+    /**
+     * Is the input using AJAX "itemSelect" event?
+     *
+     * @return true if using AJAX for itemSelect
+     */
+    public boolean isItemSelectAjaxified() {
+        return ComponentUtils.hasAjaxBehavior(getRoot(), "itemSelect");
+    }
+
+    /**
+     * Either display the dropdown or select the item it if is already displayed.
+     */
+    public void toggleDropdown() {
+        if (getPanel().isVisible()) {
+            hide();
+        }
+        else {
+            show();
+        }
+    }
+
+    /**
+     * Shows the CascadeSelect panel.
+     */
+    public void show() {
+        Locator panel = getPanel();
+        if (isEnabled() && !panel.isVisible()) {
+            PrimePlaywright.executeScript(getWidgetByIdScript() + ".show();");
+            PrimePlaywright.waitGui().until(PrimeExpectedConditions.visibleAndAnimationComplete(panel));
+        }
+    }
+
+    /**
+     * Hides the CascadeSelect panel.
+     */
+    public void hide() {
+        Locator panel = getPanel();
+        if (isEnabled() && panel.isVisible()) {
+            PrimePlaywright.executeScript(getWidgetByIdScript() + ".hide();");
+            PrimePlaywright.waitGui().until(PrimeExpectedConditions.invisibleAndAnimationComplete(panel));
+        }
+    }
+
+    public void select(String label) {
+        if (isSelected(label) || !isEnabled()) {
+            return;
+        }
+
+        if (!getPanel().isVisible()) {
+            toggleDropdown();
+        }
+
+        for (Locator element : getItems()) {
+            if (element.getAttribute("data-label").equalsIgnoreCase(label)) {
+                click(element);
+                break;
+            }
+        }
+    }
+
+    public String getSelectedLabel() {
+        return getLabel().innerText();
+    }
+
+    public boolean isSelected(String label) {
+        boolean result = false;
+        try {
+            result = getSelectedLabel().equalsIgnoreCase(label);
+        }
+        catch (Exception e) {
+            // do nothing
+        }
+        return result;
+    }
+
+    public List<String> getLabels() {
+        return getItems().stream()
+                    .map(e -> e.getAttribute("data-label"))
+                    .collect(Collectors.toList());
+    }
+
+    public List<String> getValues() {
+        return getItems().stream()
+                    .map(e -> e.getAttribute("data-value"))
+                    .collect(Collectors.toList());
+    }
+
+    @Override
+    public Locator getInput() {
+        return input;
+    }
+
+    public Locator getLabel() {
+        return findElement(By.className("ui-cascadeselect-label"));
+    }
+
+    public List<Locator> getItems() {
+        return getPanel().locator(".ui-cascadeselect-item").all();
+    }
+
+    public List<Locator> getLeafItems() {
+        return getItems().stream().filter(i -> !PrimePlaywright.hasCssClass(i, "ui-cascadeselect-item-group")).collect(Collectors.toList());
+    }
+
+    public Locator getPanel() {
+        return panel;
+    }
+
+    protected void click(Locator element) {
+        if (!PrimePlaywright.hasCssClass(element, "ui-cascadeselect-item-group") && (isOnchangeAjaxified() || isItemSelectAjaxified())) {
+            PrimePlaywright.guardAjax(element).click();
+        }
+        else {
+            element.click();
+        }
+    }
+}
+
+
+
